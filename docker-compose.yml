@@ -1,0 +1,49 @@
+services:
+  frigate:
+    container_name: ${FRIGATE_CONTAINER_NAME:-frigate}
+    privileged: true
+    restart: unless-stopped
+    stop_grace_period: 30s
+    image: ghcr.io/blakeblackshear/frigate:${FRIGATE_VERSION:-0.16}
+    shm_size: "${FRIGATE_SHM_SIZE:-512mb}"
+    devices:
+      - /dev/dri:/dev/dri
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ${FRIGATE_CONFIG:-/storage/frigate/config}:/config
+      - ${FRIGATE_MEDIA:-/storage/frigate/media}:/media/frigate
+      - type: tmpfs
+        target: /tmp/cache
+        tmpfs:
+          size: 1000000000
+    ports:
+      - "8971:8971"
+      - "5000:5000"
+      - "8554:8554"
+      - "8555:8555/tcp"
+      - "8555:8555/udp"
+
+    environment:
+      - PLUS_API_KEY=${FRIGATE_PLUS_API_KEY}
+
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+    networks:
+      - traefik
+
+    labels:
+      - 'traefik.enable=true'
+      - 'traefik.http.routers.frigate.rule=Host(`${FRIGATE_HOST:-frigate.ts.example.net}`)'
+      - 'traefik.http.routers.frigate.entrypoints=https'
+      - 'traefik.http.routers.frigate.tls.certresolver=dns01-tailscale'
+      - 'traefik.http.services.frigate-service.loadbalancer.server.port=8971'
+
+networks:
+  traefik:
+    external: true
