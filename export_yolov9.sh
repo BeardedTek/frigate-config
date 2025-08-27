@@ -134,7 +134,7 @@ echo "  MODEL_SIZE=${MODEL_SIZE}"
 echo "  IMAGE_SIZE=${IMAGE_SIZE}"
 echo "  OUTPUT_DIR=${OUTPUT_DIR}"
 echo
-read -r -p "Proceed with building Docker image? [y/N]: " confirm
+read -r -p "Proceed with exporting YOLOv9 model to ONNX? [y/N]: " confirm
 if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
   echo "Build cancelled."
   exit 0
@@ -142,7 +142,7 @@ fi
 
 # Run Docker build
 echo
-echo "Building Docker image..."
+echo "Exporting YOLOv9 model to ONNX via docker"
 docker build . \
   --build-arg MODEL_SIZE="${MODEL_SIZE}" \
   --build-arg IMAGE_SIZE="${IMAGE_SIZE}" \
