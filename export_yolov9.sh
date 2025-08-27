@@ -1,11 +1,26 @@
 #!/usr/bin/env bash
 
+echo "YOLOv9 to ONNX export"
+echo "https://github.com/beardedtek/frigate-config"
+echo ""
+
 MODEL_SIZES=(t s m c e)
 IMAGE_SIZES=(160 320 480 640)
 
 DEFAULT_MODEL="t"
 DEFAULT_IMAGE="320"
 DEFAULT_OUTPUT="."
+
+# Model info arrays (index matches MODEL_SIZES)
+MODEL_PARAMS=("58M" "90M" "110M" "51M" "120M")
+MODEL_INFERENCE=("23 ms" "25 ms" "28 ms" "30 ms" "32 ms")
+MODEL_DESC=(
+  "Fastest, smallest model. Great for edge devices, lower accuracy."
+  "Balanced speed and accuracy. Good general-purpose choice."
+  "Higher accuracy, slower. Use if quality matters more than speed."
+  "Compact model, fewer parameters. Moderate speed and accuracy."
+  "Largest model, highest accuracy, slower inference."
+)
 
 usage() {
   echo "Usage: $0 [-m model_size] [-i image_size] [-o output_dir]"
@@ -43,35 +58,35 @@ valid_choice() {
   return 1
 }
 
-# Menu chooser with default
-choose_option() {
+# Enhanced menu chooser with default + model info
+choose_model() {
   local __resultvar="$1"; shift
-  local prompt="$1"; shift
-  local default="$1"; shift
-  local options=("$@")
+  local default="$1"
 
   echo
-  echo "$prompt"
-  for i in "${!options[@]}"; do
-    echo "  $((i+1))) ${options[$i]}"
+  echo "Select Model Size:"
+  for i in "${!MODEL_SIZES[@]}"; do
+    echo "  $((i+1))) ${MODEL_SIZES[$i]} | Params: ${MODEL_PARAMS[$i]}, Inference: ${MODEL_INFERENCE[$i]}"
+    echo "         ${MODEL_DESC[$i]}"
+    echo ""
   done
   echo "Press Enter to use default: $default"
 
   local choice
   while true; do
-    read -r -p "Enter choice [1-${#options[@]}]: " choice
+    read -r -p "Enter choice [1-${#MODEL_SIZES[@]}]: " choice
     if [[ -z "$choice" ]]; then
       printf -v "$__resultvar" '%s' "$default"
       return
-    elif [[ "$choice" =~ ^[0-9]+$ ]] && (( choice >= 1 && choice <= ${#options[@]} )); then
-      printf -v "$__resultvar" '%s' "${options[$((choice-1))]}"
+    elif [[ "$choice" =~ ^[0-9]+$ ]] && (( choice >= 1 && choice <= ${#MODEL_SIZES[@]} )); then
+      printf -v "$__resultvar" '%s' "${MODEL_SIZES[$((choice-1))]}"
       return
     fi
     echo "Invalid choice, try again."
   done
 }
 
-# Prompt for directory with default + existence check
+# Existing directory chooser
 choose_directory() {
   local __resultvar="$1"; shift
   local prompt="$1"; shift
@@ -100,13 +115,39 @@ choose_directory() {
 
 # Prompt for missing flags
 if [[ -z "$MODEL_SIZE" ]]; then
-  choose_option MODEL_SIZE "Select Model Size:" "$DEFAULT_MODEL" "${MODEL_SIZES[@]}"
+  choose_model MODEL_SIZE "$DEFAULT_MODEL"
 elif ! valid_choice "$MODEL_SIZE" "${MODEL_SIZES[@]}"; then
   echo "Invalid model size: $MODEL_SIZE"
   usage
 fi
 
 if [[ -z "$IMAGE_SIZE" ]]; then
+  choose_option() {
+    local __resultvar="$1"; shift
+    local prompt="$1"; shift
+    local default="$1"; shift
+    local options=("$@")
+
+    echo
+    echo "$prompt"
+    for i in "${!options[@]}"; do
+      echo "  $((i+1))) ${options[$i]}"
+    done
+    echo "Press Enter to use default: $default"
+
+    local choice
+    while true; do
+      read -r -p "Enter choice [1-${#options[@]}]: " choice
+      if [[ -z "$choice" ]]; then
+        printf -v "$__resultvar" '%s' "$default"
+        return
+      elif [[ "$choice" =~ ^[0-9]+$ ]] && (( choice >= 1 && choice <= ${#options[@]} )); then
+        printf -v "$__resultvar" '%s' "${options[$((choice-1))]}"
+        return
+      fi
+      echo "Invalid choice, try again."
+    done
+  }
   choose_option IMAGE_SIZE "Select Image Size:" "$DEFAULT_IMAGE" "${IMAGE_SIZES[@]}"
 elif ! valid_choice "$IMAGE_SIZE" "${IMAGE_SIZES[@]}"; then
   echo "Invalid image size: $IMAGE_SIZE"
@@ -127,10 +168,21 @@ elif [[ ! -d "$OUTPUT_DIR" ]]; then
   fi
 fi
 
-# Confirmation step
+# Find index of selected model
+for i in "${!MODEL_SIZES[@]}"; do
+  if [[ "${MODEL_SIZES[$i]}" == "$MODEL_SIZE" ]]; then
+    MODEL_INDEX=$i
+    break
+  fi
+done
+
+# Confirmation step with model info
 echo
 echo "Summary of selections:"
 echo "  MODEL_SIZE=${MODEL_SIZE}"
+echo "    Parameters: ${MODEL_PARAMS[$MODEL_INDEX]}"
+echo "    Inference: ${MODEL_INFERENCE[$MODEL_INDEX]}"
+echo "    Description: ${MODEL_DESC[$MODEL_INDEX]}"
 echo "  IMAGE_SIZE=${IMAGE_SIZE}"
 echo "  OUTPUT_DIR=${OUTPUT_DIR}"
 echo
