@@ -1,0 +1,92 @@
+tls:
+  enabled: false
+  
+ffmpeg:
+  hwaccel_args: preset-nvidia-h264
+  
+birdseye:
+  enabled: true
+  mode: continuous
+  width: 1920
+  height: 1080
+  restream: true
+  
+detect:
+  enabled: true
+  width: 1920
+  height: 1024
+  max_disappeared: 60
+  fps: 5
+  
+objects:
+  track:
+    - bicycle
+    - bus
+    - person
+    - car
+    - animal
+
+record:
+  enabled: true
+  retain:
+    days: 7
+    mode: all
+  alerts:
+    retain:
+      days: 7
+    pre_capture: 30
+    post_capture: 30
+  detections:
+    retain:
+      days: 14
+    pre_capture: 30
+    post_capture: 30
+
+snapshots:
+  enabled: true
+  bounding_box: true
+  quality: 100
+  retain:
+    default: 7
+    objects:
+      bus: 30
+      person: 30
+      car: 30
+      animal: 30
+      bicycle: 30
+
+detectors:
+  onnx:
+    type: onnx
+
+model:
+  model_type: yolo-generic
+  width: 640
+  height: 640
+  input_tensor: nchw
+  input_dtype: float
+  path: /config/model_cache/yolov9-s.onnx
+  labelmap_path: /labelmap/coco-80.txt
+
+go2rtc:
+  streams:
+    driveway:
+      - "ffmpeg:rtsp://192.168.3.81:8554/1080p?mp4#video=h264#audio=copy#hardware"
+    driveway_sub:
+      - "ffmpeg:rtsp://192.168.3.81:8554/360p?mp4#video=h264#audio=copy#hardware"
+
+cameras:
+  driveway:
+    birdseye:
+      enabled: true
+    ffmpeg:
+      inputs:
+        - path rtsp://127.0.0.1:8554/driveway
+          roles:
+            - record
+            - detect
+            - audio
+    live:
+      streams:
+        Main Stream: driveway
+        Sub Stream: driveway
